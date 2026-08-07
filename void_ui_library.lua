@@ -115,6 +115,16 @@ VexUI.Themes = {
         Placeholder = Color3.fromRGB(18, 14, 24),
         IconColor = Color3.fromRGB(170, 120, 230),
     },
+    Crimson = {
+        Name = "Crimson",
+        Background = Color3.fromRGB(18, 8, 10),
+        SideBar = Color3.fromRGB(28, 12, 16),
+        Text = Color3.fromRGB(255, 235, 235),
+        ElementColor = Color3.fromRGB(55, 18, 24),
+        Outline = Color3.fromRGB(120, 30, 45),
+        Placeholder = Color3.fromRGB(18, 8, 10),
+        IconColor = Color3.fromRGB(220, 40, 60),
+    },
 }
 
 UI.Theme = VexUI.Themes["Dark"]
@@ -628,7 +638,7 @@ end
 
 function UI:CreateWindow(Config)
     local Window = {
-        Name = Config.Name or "void ui",
+        Name = Config.Name or "Void Ui",
         Author = Config.Author or nil,
         Icon = Config.Icon or nil,
         ToggleKey = Config.ToggleKey or Enum.KeyCode.F,
@@ -2351,16 +2361,34 @@ function UI:CreateWindow(Config)
     UserTitle.Visible = true
     UserSub.Visible = true
     UserFrame.Visible = Window.User.Enabled or false
+    UserFrame.ZIndex = 20
 
-    -- Divider between tabs and user panel (avoids overlap/bugs)
+    -- Reserved bottom area for user panel so tabs scroll never overlaps avatar
+    local USER_ZONE = 58 -- user card + gap
+    local function getUserOffset()
+        return (Window.User.Enabled and USER_ZONE) or 10
+    end
+
+    local function applyLeftScrollLimit()
+        local offset = getUserOffset()
+        LeftScroll.Size = UDim2.new(1, 0, 1, -offset)
+        LeftScroll.Position = UDim2.new(0, 0, 0, 0)
+        LeftScroll.ClipsDescendants = true
+        if UserDivider then
+            UserDivider.Visible = Window.User.Enabled and true or false
+            UserDivider.Position = UDim2.new(0.5, 0, 1, -(USER_ZONE - 8))
+        end
+    end
+
+    -- Divider between tabs and user panel
     local UserDivider = VexUI:Create("Frame", {
         Name = "UserDivider",
         Parent = TabFrame,
         AnchorPoint = Vector2.new(0.5, 1),
-        Position = UDim2.new(0.5, 0, 1, -48),
+        Position = UDim2.new(0.5, 0, 1, -(USER_ZONE - 8)),
         Size = UDim2.new(0, Window.SideBarWidth - 24, 0, 1),
         BorderSizePixel = 0,
-        ZIndex = 11,
+        ZIndex = 21,
         Visible = Window.User.Enabled or false,
         ThemeID = {
             BackgroundColor3 = "Outline"
@@ -2375,9 +2403,11 @@ function UI:CreateWindow(Config)
         BackgroundTransparency = 1,
         BorderColor3 = Color3.fromRGB(0, 0, 0),
         BorderSizePixel = 0,
+        ClipsDescendants = true,
         Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(1, 0, 1, (Window.User.Enabled and -55 or -10)),
-        ScrollBarThickness = 0
+        Size = UDim2.new(1, 0, 1, -getUserOffset()),
+        ScrollBarThickness = 0,
+        ZIndex = 5,
     },{
         VexUI:Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2387,12 +2417,13 @@ function UI:CreateWindow(Config)
             PaddingLeft = UDim.new(0, 5),
             PaddingRight = UDim.new(0, 5),
             PaddingTop = UDim.new(0, 10),
-            PaddingBottom = UDim.new(0, 8),
+            PaddingBottom = UDim.new(0, 6),
         })
     })
     LeftScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        LeftScroll.CanvasSize = UDim2.new(0, LeftScroll.UIListLayout.AbsoluteContentSize.X, 0, LeftScroll.UIListLayout.AbsoluteContentSize.Y)
+        LeftScroll.CanvasSize = UDim2.new(0, 0, 0, LeftScroll.UIListLayout.AbsoluteContentSize.Y + 4)
     end)
+    applyLeftScrollLimit()
 
     local ElementFolder = VexUI:Create("Folder", {
         Parent = Main,
@@ -4114,8 +4145,8 @@ function UI:CreateWindow(Config)
             return Section
         end
         function Window:UserEnabled(Value)
-            UserFrame.Visible = Value and true or false
-            if UserDivider then UserDivider.Visible = Value and true or false end
+            Window.User.Enabled = Value and true or false
+            UserFrame.Visible = Window.User.Enabled
             UserTitle.Visible = true
             UserSub.Visible = true
             Utility:TweenObject(UserFrame, {BackgroundTransparency = Value and 0 or 1}, 0.2)
@@ -4124,7 +4155,7 @@ function UI:CreateWindow(Config)
             if UserFrame:FindFirstChild("ImageLabel") then
                 Utility:TweenObject(UserFrame.ImageLabel, {ImageTransparency = Value and 0 or 1, BackgroundTransparency = Value and 0.7 or 1}, 0.2)
             end
-            LeftScroll.Size = UDim2.new(1, 0, 1, Value and -55 or -10)
+            applyLeftScrollLimit()
         end
         function Window:Anonymous(Value)
             local lp = game.Players.LocalPlayer
@@ -4329,13 +4360,16 @@ function UI:CreateWindow(Config)
         Window.IslandOpen = true
         Main.Visible = true
         Window.Default = "Default"
+        if ResizeHandle and Window.Resizable then
+            ResizeHandle.Visible = true
+            UpdateResizeHandlePos()
+        end
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, Window.Size.Y.Offset - Window.Topbar.Height - 10)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        --Utility:TweenObject(TabFrame.Frame, {BackgroundTransparency = 0}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 1, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        applyLeftScrollLimit()
+        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset - 182 + 133 + 5, 0, Window.Topbar.Height)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Main.Frame.Visible = true
-        Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
+        Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
         Utility:TweenObject(Main, {BackgroundTransparency = 0}, 0.2, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 
         if UI.Notifications == 0 then
@@ -4345,6 +4379,7 @@ function UI:CreateWindow(Config)
                 Utility:TweenObject(Island, {Size = UDim2.new(0, Island.UIListLayout.AbsoluteContentSize.X + 5, 0, 35)}, 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                 task.wait(0.1)
                 Utility:TweenObject(MinzUI, {Size = UDim2.new(0, MinzUI.UIListLayout.AbsoluteContentSize.X + 10, 0, 30)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                UpdateResizeHandlePos()
         end)
         task.wait(0.25)
         MinzUI.Visible = false
@@ -4355,13 +4390,18 @@ function UI:CreateWindow(Config)
 
         Window.IslandOpen = false
         Window.Default = "Minimize"
+        -- hide resize handle together with the UI
+        if ResizeHandle then
+            ResizeHandle.Visible = false
+            resizing = false
+            isResizingGlobal = false
+        end
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        --Utility:TweenObject(TabFrame.Frame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(LeftScroll, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --0, Window.Size.X.Offset, 0, Window.Size.Y.Offset-8
+        Utility:TweenObject(Main.Frame, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Main.Frame.Visible = false
-        Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out) --UDim2.new(0, Window.Size.X.Offset, 0, Window.Size.Y.Offset)
+        Utility:TweenObject(Main, {Size = UDim2.new(0, Window.Size.X.Offset, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(Main, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
         Utility:TweenObject(Island, {Position = UDim2.new(0.5, 0, -0.08, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
@@ -4416,6 +4456,7 @@ function UI:CreateWindow(Config)
             if isAnimatingWindow then return end
             isAnimatingWindow = true
             Window.IslandOpen = false
+            if ResizeHandle then ResizeHandle.Visible = false end
             task.spawn(function() pcall(Window.OnDestroy) end)
             Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
             Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
@@ -4436,6 +4477,7 @@ function UI:CreateWindow(Config)
 
     function Window:Destroy()
         Window.IslandOpen = false
+        if ResizeHandle then ResizeHandle.Visible = false end
         Utility:TweenObject(TabFrame, {Size = UDim2.new(0, Window.SideBarWidth, 0, 0)}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
         Utility:TweenObject(TabFrame.Frame, {BackgroundTransparency = 1}, 0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
@@ -4550,38 +4592,35 @@ function UI:CreateWindow(Config)
     end
     
     local ResizeHandle = VexUI:Create("Frame", {
-        Parent = UIScreen,
-        Size = UDim2.new(0, 32, 0, 32),
-        Position = UDim2.new(1, -10, 1, -10),
-        AnchorPoint = Vector2.new(0, 0),
+        Parent = Main,
+        Name = "ResizeHandle",
+        Size = UDim2.new(0, 28, 0, 28),
+        Position = UDim2.new(1, -6, 1, -6),
+        AnchorPoint = Vector2.new(1, 1),
         BackgroundTransparency = 1,
-        ZIndex = 499,
+        ZIndex = 500,
         Active = true,
     }, {
         VexUI:Create("ImageLabel", {
-            Size = UDim2.new(0, 25, 0, 25),
+            Size = UDim2.new(0, 18, 0, 18),
             BackgroundTransparency = 1,
             Image = "rbxassetid://97284127540888",
-            Position = UDim2.new(0, -7, 0, -7),
-            AnchorPoint = Vector2.new(0, 0),
-            ImageTransparency = 0.8,
+            Position = UDim2.new(1, 0, 1, 0),
+            AnchorPoint = Vector2.new(1, 1),
+            ImageTransparency = 0.75,
             ThemeID = {
                 ImageColor3 = "IconColor"
             }
         }),
     })
 
-    ResizeHandle.Visible = Window.Resizable
-    ResizeHandle.Size = UDim2.new(0, 44, 0, 44)
-    ResizeHandle.ZIndex = 500
-    ResizeHandle.Active = true
+    -- stays inside Main so it hides automatically when minimized
+    ResizeHandle.Visible = Window.Resizable and Window.IslandOpen ~= false
 
     function UpdateResizeHandlePos()
         if not Main or not Main.Parent then return end
-        ResizeHandle.Position = UDim2.new(
-            0, Main.AbsolutePosition.X + Main.AbsoluteSize.X - 18,
-            0, Main.AbsolutePosition.Y + Main.AbsoluteSize.Y - 18
-        )
+        -- relative to Main (parent), bottom-right corner
+        ResizeHandle.Position = UDim2.new(1, -4, 1, -4)
     end
 
     local resizing = false
@@ -4590,22 +4629,23 @@ function UI:CreateWindow(Config)
     local activeResizeInput = nil
 
     ResizeHandle.MouseEnter:Connect(function()
-        Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.35}, 0.15)
+        Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.3}, 0.12)
     end)
     ResizeHandle.MouseLeave:Connect(function()
         if not resizing then
-            Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.8}, 0.15)
+            Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.75}, 0.12)
         end
     end)
 
     ResizeHandle.InputBegan:Connect(function(input)
+        if not Window.IslandOpen or not Window.Resizable then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             resizing = true
             isResizingGlobal = true
             activeResizeInput = input
-            startPos = input.Position
+            startPos = Vector2.new(input.Position.X, input.Position.Y)
             startSize = Window.Size
-            Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0}, 0.1)
+            Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0}, 0.08)
         end
     end)
 
@@ -4615,7 +4655,8 @@ function UI:CreateWindow(Config)
         resizing = false
         isResizingGlobal = false
         activeResizeInput = nil
-        Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.8}, 0.15)
+        startPos = nil
+        Utility:TweenObject(ResizeHandle.ImageLabel, {ImageTransparency = 0.75}, 0.12)
         UpdateResizeHandlePos()
     end
 
@@ -4627,13 +4668,12 @@ function UI:CreateWindow(Config)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if not resizing then return end
+        if not resizing or not Window.IslandOpen then return end
         if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
         if not startPos or not startSize then return end
-        local delta = input.Position - startPos
-        -- instant=true avoids tween spam that freezes the UI on drag
+        local cur = Vector2.new(input.Position.X, input.Position.Y)
+        local delta = cur - startPos
         Window:Resize(startSize.X.Offset + delta.X, startSize.Y.Offset + delta.Y, true)
-        UpdateResizeHandlePos()
     end)
 
     UpdateResizeHandlePos()
@@ -4641,7 +4681,8 @@ function UI:CreateWindow(Config)
     Main:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateResizeHandlePos)
 
     function Window:SetResizable(v)
-        ResizeHandle.Visible = v
+        Window.Resizable = v and true or false
+        ResizeHandle.Visible = Window.Resizable and Window.IslandOpen
     end
     UI.Window = Window
     return Window
@@ -4850,7 +4891,7 @@ return UI
 --[[local VexUI = UI
 
 local Window = VexUI:CreateWindow({
-    Name = "void ui",
+    Name = "Void Ui",
     Icon = "door-open",
     SideBarWidth = 160,
     Theme = "Dark",
@@ -4861,8 +4902,8 @@ local Window = VexUI:CreateWindow({
         Anonymous = true,
     },
     KeySystem = {
-        Title = "void ui",
-        Desc = "This is an example of a key system using void ui. \nKey: 1234 <key-round>",
+        Title = "Void Ui",
+        Desc = "This is an example of a key system using Void Ui. \nKey: 1234 <key-round>",
         KeyValidator = function(key)
             return key == "1234"
         end,
@@ -4871,7 +4912,7 @@ local Window = VexUI:CreateWindow({
 })
 
 Window:EditOpenButton({
-    Title = "Open void ui",
+    Title = "Open Void Ui",
     Icon = "door-open",
     Transparency = 0.2,
     StrokeThickness = 1,
@@ -5153,7 +5194,7 @@ grid:Toggle({ Title = "Toggle", Locked = false,Callback = function(v) print(v) e
 Settings:Section({Title = "Window"})
 Settings:Dropdown({
 	Title = "Theme",
-	Option = {"Dark","Light","Forest","Amethyst"},
+	Option = {"Dark","Light","Forest","Amethyst","Crimson"},
 	Value = "Dark",
 	Callback = function(Value)
 		Window:SetTheme(Value)
